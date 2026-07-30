@@ -3,7 +3,9 @@
 
 local Global = require 'utils.global'
 local Event = require 'utils.event'
+local GuiDispatcher = require 'utils.gui_dispatcher'
 local BottomFrame = require 'comfy_panel.bottom_frame'
+local TopBar = require 'utils.top_bar'
 local math_floor = math.floor
 local print_color = {r = 120, g = 255, b = 0}
 local floor = math.floor
@@ -508,7 +510,8 @@ local function auto_stash(player, event)
 end
 
 local function create_gui_button(player)
-    if player.gui.top.auto_stash then
+    local flow = TopBar.get_button_flow(player)
+    if flow['auto_stash'] then
         return
     end
     local tooltip
@@ -525,7 +528,6 @@ local function create_gui_button(player)
     end
     if this.bottom_button then
         local data = BottomFrame.get('bottom_quickbar_button')
-        -- save it for later use
         data.tooltip = tooltip
         data.sprite = 'item/wooden-chest'
 
@@ -536,22 +538,16 @@ local function create_gui_button(player)
                 data.frame.tooltip = tooltip
             end
         end
-    else
-        local b =
-            player.gui.top.add(
-            {
-                type = 'sprite-button',
-                sprite = 'item/wooden-chest',
-                name = 'auto_stash',
-                tooltip = tooltip
-            }
-        )
-        b.style.font_color = {r = 0.11, g = 0.8, b = 0.44}
-        b.style.font = 'heading-1'
-        b.style.minimal_height = 40
-        b.style.maximal_width = 40
-        b.style.minimal_width = 38
-        b.style.maximal_height = 38
+    end
+
+    local flow = TopBar.get_button_flow(player)
+    if not flow['auto_stash'] then
+        local b = TopBar.add_button(player, {
+            type = 'sprite-button',
+            sprite = 'item/wooden-chest',
+            name = 'auto_stash',
+            tooltip = tooltip
+        })
         b.style.padding = 1
         b.style.margin = 0
     end
@@ -577,25 +573,24 @@ local function on_player_joined_game(event)
     create_gui_button(game.players[event.player_index])
 end
 
-local function on_gui_click(event)
-    if not event.element then
-        return
-    end
-    if not event.element.valid then
-        return
-    end
+local function on_auto_stash_click(event)
     local player = game.players[event.player_index]
-    local name = 'auto_stash'
-    if this.bottom_button then
-        local data = BottomFrame.get('bottom_quickbar_button')
-        if data[player.index] then
-            data = data[player.index]
-            name = data.name
-        end
-    end
+    auto_stash(player, event)
+end
 
-    if event.element.name == name then
-        auto_stash(player, event)
+GuiDispatcher.register_click('auto_stash', on_auto_stash_click)
+
+local function on_gui_click_bottom(event)
+    if not this.bottom_button then return end
+    local element = event.element
+    if not element or not element.valid then return end
+    local player = game.players[event.player_index]
+    local data = BottomFrame.get('bottom_quickbar_button')
+    if data[player.index] then
+        data = data[player.index]
+        if element.name == data.name then
+            auto_stash(player, event)
+        end
     end
 end
 
@@ -630,6 +625,6 @@ end
 
 Event.on_init(do_whitelist)
 Event.add(defines.events.on_player_joined_game, on_player_joined_game)
-Event.add(defines.events.on_gui_click, on_gui_click)
+Event.add(defines.events.on_gui_click, on_gui_click_bottom)
 
 return Public

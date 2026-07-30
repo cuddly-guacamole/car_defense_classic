@@ -3,8 +3,7 @@
 local Color = require 'utils.color_presets'
 local Event = require 'utils.event'
 local Global = require 'utils.global'
-local Gui = require 'utils.gui'
-
+local GuiDispatcher = require 'utils.gui_dispatcher'
 local this = {
     players = {}
 }
@@ -18,8 +17,8 @@ Global.register(
 
 local Public = {}
 
-local locate_player_frame_name = Gui.uid_name()
-local player_frame_name = Gui.uid_name()
+local locate_player_frame_name = 'cmd_where_locate_player_frame'
+local player_frame_name = 'cmd_where_player_frame'
 
 local function create_player_data(player)
     local player_data = this.players[player.index]
@@ -172,19 +171,13 @@ local function on_nth_tick()
     end
 end
 
-Gui.on_click(
-    locate_player_frame_name,
-    function(event)
-        remove_camera_frame(event.player)
-    end
-)
+GuiDispatcher.register_click(locate_player_frame_name, function(event)
+    remove_camera_frame(event.player)
+end)
 
-Gui.on_click(
-    player_frame_name,
-    function(event)
-        remove_camera_frame(event.player)
-    end
-)
+GuiDispatcher.register_click(player_frame_name, function(event)
+    remove_camera_frame(event.player)
+end)
 
 Public.create_mini_camera_gui = create_mini_camera_gui
 Public.remove_camera_frame = remove_camera_frame

@@ -18,6 +18,7 @@ local Dungeon = require 'maps.amap.dungeon'
 
 local refresh_shop = require"maps.amap.rock".refresh_shop
 local ft = require"maps.amap.rock".ft
+local vote_choise_map = require"maps.amap.vote_choise_map"
 local Collapse = require 'modules.collapse'
 
 local Reset_map = require 'maps.amap.main'.reset_map
@@ -776,6 +777,7 @@ local function game_over()
 
     -- 恢复投票结果
     this.vote_map_number = saved_vote_map_number
+    vote_choise_map.refresh_all()
     
     rpg_t = RPG.get('rpg_t')
     for index, settings in pairs(saved_auto_cast_settings) do

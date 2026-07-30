@@ -2,8 +2,8 @@ local Misc = require 'commands.misc'
 local Event = require 'utils.event'
 local Global = require 'utils.global'
 local ComfyGui = require 'comfy_panel.main'
-local Gui = require 'utils.gui'
-
+local GuiDispatcher = require 'utils.gui_dispatcher'
+local TopBar = require 'utils.top_bar'
 local this = {
     players = {},
     activate_custom_buttons = false,
@@ -19,9 +19,22 @@ Global.register(
 
 local Public = {}
 
-local bottom_guis_frame = Gui.uid_name()
-local clear_corpse_button_name = Gui.uid_name()
-local bottom_quickbar_button_name = Gui.uid_name()
+local bottom_guis_frame = 'cp_bf_bottom_guis_frame'
+local clear_corpse_button_name = 'cp_bf_clear_corpse_button'
+local bottom_quickbar_button_name = 'cp_bf_bottom_quickbar_button'
+
+local function create_top_clear_corpse_button(player)
+    local flow = TopBar.get_button_flow(player)
+    if flow[clear_corpse_button_name] then
+        return
+    end
+    TopBar.add_button(player, {
+        type = 'sprite-button',
+        sprite = 'entity/behemoth-biter',
+        name = clear_corpse_button_name,
+        tooltip = {'commands.clear_corpse'}
+    })
+end
 
 function Public.get_player_data(player, remove_user_data)
     if remove_user_data then
@@ -84,63 +97,8 @@ local function destroy_frame(player)
 end
 
 local function create_frame(player, alignment, location, portable)
-    local gui = player.gui
-    local frame = gui.screen[bottom_guis_frame]
-    if frame and frame.valid then
-        destroy_frame(player)
-    end
-
-    alignment = alignment or 'vertical'
-
-    frame =
-        player.gui.screen.add {
-        type = 'frame',
-        name = bottom_guis_frame,
-        direction = alignment
-    }
-
-    frame.style.padding = 3
-    frame.style.top_padding = 4
-
-    if alignment == 'vertical' then
-        frame.style.minimal_height = 96
-    end
-
-    frame.location = location
-    if portable then
-        frame.caption = '•'
-    end
-
-    local inner_frame =
-        frame.add {
-        type = 'frame',
-        direction = alignment
-    }
-    inner_frame.style = 'quick_bar_inner_panel'
-
-    inner_frame.add {
-        type = 'sprite-button',
-        sprite = 'entity/behemoth-biter',
-        name = clear_corpse_button_name,
-        tooltip = {'commands.clear_corpse'},
-        style = 'quick_bar_page_button'
-    }
-
-    local bottom_quickbar_button =
-        inner_frame.add {
-        type = 'sprite-button',
-        name = bottom_quickbar_button_name,
-        style = 'quick_bar_page_button'
-    }
-
-    this.bottom_quickbar_button[player.index] = {name = bottom_quickbar_button_name, frame = bottom_quickbar_button}
-
-    if this.bottom_quickbar_button.sprite and this.bottom_quickbar_button.tooltip then
-        bottom_quickbar_button.sprite = this.bottom_quickbar_button.sprite
-        bottom_quickbar_button.tooltip = this.bottom_quickbar_button.tooltip
-    end
-
-    return frame
+    destroy_frame(player)
+    this.bottom_quickbar_button[player.index] = {name = bottom_quickbar_button_name}
 end
 
 local function set_location(player, state)
@@ -205,17 +163,15 @@ function Public.is_custom_buttons_enabled()
     return this.activate_custom_buttons
 end
 
-Gui.on_click(
-    clear_corpse_button_name,
-    function(event)
-        Misc.clear_corpses(event)
-    end
-)
+GuiDispatcher.register_click(clear_corpse_button_name, function(event)
+    Misc.clear_corpses(event)
+end)
 
 Event.add(
     defines.events.on_player_joined_game,
     function(event)
         local player = game.players[event.player_index]
+        create_top_clear_corpse_button(player)
         if this.activate_custom_buttons then
             set_location(player)
         end

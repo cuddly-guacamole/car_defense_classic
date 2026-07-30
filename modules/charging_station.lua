@@ -2,14 +2,14 @@
 --charge your armor equipment from nearby accumulators!
 --change storage.charging_station_multiplier if you want different conversion rate than 1:1.
 local Event = require 'utils.event'
+local GuiDispatcher = require 'utils.gui_dispatcher'
 local SpamProtection = require 'utils.spam_protection'
+local TopBar = require 'utils.top_bar'
 
 local function draw_charging_gui()
     for _, player in pairs(game.connected_players) do
-        if not player.gui.top.charging_station then
-            local b = player.gui.top.add({type = 'sprite-button', name = 'charging_station', sprite = 'item/battery-mk2-equipment', tooltip = {'modules.charging_station_tooltip'}})
-            b.style.minimal_height = 38
-            b.style.maximal_height = 38
+        if not TopBar.get_button_flow(player).charging_station then
+            TopBar.add_button(player, {type = 'sprite-button', name = 'charging_station', sprite = 'item/battery-mk2-equipment', tooltip = {'modules.charging_station_tooltip'}})
         end
     end
 end
@@ -75,26 +75,16 @@ local function on_player_joined_game(event)
     draw_charging_gui()
 end
 
-local function on_gui_click(event)
-    if not event then
+local function on_charging_station_click(event)
+    local player = game.players[event.player_index]
+    local is_spamming = SpamProtection.is_spamming(player, nil, 'Charging Station Gui Click')
+    if is_spamming then
         return
     end
-    if not event.element then
-        return
-    end
-    if not event.element.valid then
-        return
-    end
-    if event.element.name == 'charging_station' then
-        local player = game.players[event.player_index]
-        local is_spamming = SpamProtection.is_spamming(player, nil, 'Charging Station Gui Click')
-        if is_spamming then
-            return
-        end
-        charge(player)
-        return
-    end
+    charge(player)
 end
+
+GuiDispatcher.register_click('charging_station', on_charging_station_click)
 
 local function on_init()
     storage.charging_station_multiplier = 1
@@ -102,4 +92,3 @@ end
 
 Event.on_init(on_init)
 Event.add(defines.events.on_player_joined_game, on_player_joined_game)
-Event.add(defines.events.on_gui_click, on_gui_click)

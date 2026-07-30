@@ -3,9 +3,10 @@
 local ICT = require 'maps.amap.ic.table'
 local Functions = require 'maps.amap.ic.functions'
 local Gui = require 'maps.amap.ic.gui'
+local TopBar = require 'utils.top_bar'
 
 local function get_top_frame_custom(player, name)
-    return player.gui.top[name]
+    return TopBar.get_button_flow(player)[name]
 end
 
 local function validate_player(player)
@@ -28,23 +29,19 @@ local function validate_player(player)
 end
 
 local function get_top_frame(player)
-    return player.gui.top['minimap_button']
+    return TopBar.get_button_flow(player)['minimap_button']
 end
 
 local function create_button(player)
+    local flow = TopBar.get_button_flow(player)
     local button = 
-        player.gui.top['minimap_button'] or
-        player.gui.top.add(
-            {
-                type = 'sprite-button',
-                name = 'minimap_button',
-                sprite = 'utility/map',
-                tooltip = 'Open or close minimap.',
-                style = Gui.button_style
-            }
-        )
-    button.style.minimal_height = 38
-    button.style.maximal_height = 38
+        flow['minimap_button'] or
+        TopBar.add_button(player, {
+            type = 'sprite-button',
+            name = 'minimap_button',
+            sprite = 'utility/map',
+            tooltip = 'Open or close minimap.'
+        })
     return button
 end
 
@@ -56,7 +53,7 @@ function Public.toggle_button(player)
     local button = get_top_frame(player)
     if Functions.get_player_surface(player) then
         if button and button.valid then
-            button.visible = true
+            button.visible = not TopBar.is_collapsed(player.index)
         end
     else
         if button and button.valid then

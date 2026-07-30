@@ -5,11 +5,12 @@ local Server = require 'utils.server'
 local Color = require 'utils.color_presets'
 local Event = require 'utils.event'
 local Global = require 'utils.global'
-local BottomFrame = require 'utils.gui.bottom_frame'
+local BottomFrame = require 'comfy_panel.bottom_frame'
 local Gui = require 'utils.gui'
 local SpamProtection = require 'utils.spam_protection'
 local Discord = require 'utils.discord_handler'
 local Commands = require 'utils.commands'
+local GuiDispatcher = require 'utils.gui_dispatcher'
 
 local this = {
     enabled = true,
@@ -27,7 +28,7 @@ Global.register(
 local Public = {
 }
 
-local clear_corpse_button_name = Gui.uid_name()
+local clear_corpse_button_name = 'cmd_misc_clear_corpse_button'
 
 Commands.new('playtime', 'Fetches a player total playtime or nil.')
     :require_backend()
@@ -520,19 +521,16 @@ Event.add(
     end
 )
 
-Gui.on_click(
-    clear_corpse_button_name,
-    function (event)
-        if not this.enabled then
-            return
-        end
-        local is_spamming = SpamProtection.is_spamming(event.player, nil, 'Clear Corpse')
-        if is_spamming then
-            return
-        end
-        clear_corpses(event)
+GuiDispatcher.register_click(clear_corpse_button_name, function(event)
+    if not this.enabled then
+        return
     end
-)
+    local is_spamming = SpamProtection.is_spamming(event.player, nil, 'Clear Corpse')
+    if is_spamming then
+        return
+    end
+    clear_corpses(event)
+end)
 
 Event.add(
     BottomFrame.events.bottom_quickbar_location_changed,
