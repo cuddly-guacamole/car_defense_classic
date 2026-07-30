@@ -215,9 +215,11 @@ local COEFF_REG = {1, 1.2, 1.4, 1.6, 1.8}
 
 ## 离线测试方法
 
-本地装有 Steam Factorio，无需进游戏即可验证代码加载和纯逻辑。
+无需进游戏即可验证代码加载和纯逻辑。支持两种 Factorio 安装方式：
 
 ### 无头加载测试（验证能否加载）
+
+**方式一：Steam 版**
 
 ```powershell
 # 在 %APPDATA%/Factorio 下执行
@@ -225,13 +227,37 @@ local COEFF_REG = {1, 1.2, 1.4, 1.6, 1.8}
     --start-server-load-scenario 坦克保卫战 --no-log-rotation
 ```
 
+**方式二：官网便携版（推荐，日志在安装目录下，启动更快）**
+
+```powershell
+& "E:/Game/Factorio/bin/x64/factorio.exe" `
+    --start-server-load-scenario 坦克保卫战 --no-log-rotation
+```
+
+便携版需创建符号链接使场景指向项目源码目录（见下方说明）。
+
 日志到 `Hosting game` / `InGame` 且无 `Error` / Lua 报错 = 全部通过。
+
+### 便携版符号链接设置
+
+便携版场景目录为 `E:\Game\Factorio\scenarios\`，需创建符号链接使 `car_defense` 指向项目源码：
+
+```cmd
+mklink /D "E:\Game\Factorio\scenarios\car_defense" "C:\Users\Administrator\Documents\car_defense"
+```
+
+> 需以**管理员权限**运行 cmd 执行。创建后修改源码即可直接加载测试，无需手动复制场景文件。
 
 ### RCON 命令执行测试（在真运行时跑逻辑）
 
 ```powershell
-# 步骤 1：起服务器
+# 步骤 1：起服务器（Steam 版）
 & "C:/Program Files (x86)/Steam/steamapps/common/Factorio/bin/x64/factorio.exe" `
+    --start-server-load-scenario 坦克保卫战 `
+    --rcon-port 27015 --rcon-password testpw --no-log-rotation
+
+# 或便携版
+& "E:/Game/Factorio/bin/x64/factorio.exe" `
     --start-server-load-scenario 坦克保卫战 `
     --rcon-port 27015 --rcon-password testpw --no-log-rotation
 
