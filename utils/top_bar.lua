@@ -2,6 +2,7 @@ local Event = require 'utils.event'
 local GuiDispatcher = require 'utils.gui_dispatcher'
 local Global = require 'utils.global'
 local mod_gui = require('__core__/lualib/mod-gui')
+local GuiRebuild = require 'utils.gui_rebuild'
 
 local Public = {}
 
@@ -223,5 +224,12 @@ Public.create_toggle_button = create_toggle_button
 Public.apply_collapse_state = apply_collapse_state
 Public.migrate_buttons_to_flow = migrate_buttons_to_flow
 Public.resize_buttons = resize_buttons
+
+-- 注册到统一重建入口：场景热更 / 服务器更新时统一迁移旧顶栏按钮并重建折叠开关
+GuiRebuild.register('top_bar', function(player)
+    migrate_buttons_to_flow(player)
+    create_toggle_button(player)
+    resize_buttons(player)
+end)
 
 return Public

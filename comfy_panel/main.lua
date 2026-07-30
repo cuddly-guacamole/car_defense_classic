@@ -15,6 +15,7 @@ local SpamProtection = require 'utils.spam_protection'
 local Token = require 'utils.token'
 local GuiDispatcher = require 'utils.gui_dispatcher'
 local TopBar = require 'utils.top_bar'
+local GuiRebuild = require 'utils.gui_rebuild'
 
 local Task = require 'utils.task'
 
@@ -34,6 +35,7 @@ local fix_frame_style_token = Token.register(fix_frame_style)
 
 local LEGACY_GUI_NAMES = {
     'tianfu_frame', 'tianfu_frame_table', 'tianfu_frame_button',
+    'tianfu_table', 'tianfu_lengque_table', -- 补全旧天赋表/冷却表容器
     'zhiye_select', 'choise1', 'choise2', 'choise3',
     '选择你的天赋', 'choise_zhiye_frame',
     'poll_button', 'poll_frame', 'close_poll_frame',
@@ -44,20 +46,39 @@ local LEGACY_GUI_NAMES = {
     'new_group_name', 'new_group_description', 'create_new_group',
     'datalog', 'admin_player_select',
 }
+local LEGACY_GUI_PREFIXES = { 'tianfu_name_', 'choise' }
+
+local function is_legacy_name(name)
+    for _, n in ipairs(LEGACY_GUI_NAMES) do
+        if name == n then return true end
+    end
+    for _, p in ipairs(LEGACY_GUI_PREFIXES) do
+        if name:sub(1, #p) == p then return true end
+    end
+    return false
+end
 
 local function cleanup_legacy_uid_gui(player)
     local locations = {player.gui.top, player.gui.screen, player.gui.left, player.gui.center}
-    for _, location in ipairs(locations) do
-        for _, child in pairs(location.children) do
-            if tonumber(child.name) then
-                child.destroy()
-            end
-        end
-    end
+    -- 先按精确名销毁已知旧元素
     for _, name in ipairs(LEGACY_GUI_NAMES) do
         for _, location in ipairs(locations) do
             if location[name] then
                 location[name].destroy()
+            end
+        end
+    end
+    -- 再扫描数字名 / 前缀名（先收集后销毁，避免遍历中 destroy 导致漏删）
+    for _, location in ipairs(locations) do
+        if location and location.valid then
+            local to_kill = {}
+            for _, child in pairs(location.children) do
+                if child and child.valid and (tonumber(child.name) or is_legacy_name(child.name)) then
+                    to_kill[#to_kill + 1] = child
+                end
+            end
+            for _, child in ipairs(to_kill) do
+                if child.valid then child.destroy() end
             end
         end
     end
@@ -190,6 +211,8 @@ local function main_frame(player)
     local frame = player.gui.left.comfy_panel
     if not frame or not frame.valid then
         frame = player.gui.left.add({type = 'frame', name = 'comfy_panel'})
+    elseif frame.tabbed_pane and frame.tabbed_pane.valid then
+        frame.tabbed_pane.destroy() -- 旧帧残留时先销毁已有 tabbed_pane，避免名字冲突崩溃
     end
 
     frame.style.margin = 6
@@ -316,6 +339,12 @@ Event.add(defines.events.on_gui_selected_tab_changed, function(event)
     end
     local player = game.players[event.player_index]
     Public.comfy_panel_refresh_active_tab(player)
+end)
+
+-- 注册到统一重建入口：场景热更 / 服务器更新时统一清理旧 GUI 并重建按钮
+GuiRebuild.register('comfy_panel', function(player)
+    cleanup_legacy_uid_gui(player)
+    top_button(player)
 end)
 
 return Public

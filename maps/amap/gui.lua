@@ -11,6 +11,7 @@ local tianfu = require 'maps.amap.tianfu'
 local rpgtable = require 'modules.rpg.table'
 local TianfuQuality = require 'maps.amap.tianfu_quality'
 local GuiStyles = require 'maps.amap.gui_styles'
+local GuiRebuild = require 'utils.gui_rebuild'
 
 local Public = {}
 
@@ -218,28 +219,53 @@ end
 -- 创建顶部按钮
 local LEGACY_GUI_NAMES = {
     'tianfu_frame', 'tianfu_frame_table', 'tianfu_frame_button',
+    'tianfu_table', 'tianfu_lengque_table', -- 补全旧天赋表/冷却表容器
     'zhiye_select', 'choise1', 'choise2', 'choise3',
     '选择你的天赋', 'choise_zhiye_frame',
 }
+-- 前缀匹配：旧天赋名按钮（tianfu_name_<id>）、旧选择前缀（choise...）
+local LEGACY_GUI_PREFIXES = { 'tianfu_name_', 'choise' }
+
+local function is_legacy_name(name)
+    for _, n in ipairs(LEGACY_GUI_NAMES) do
+        if name == n then return true end
+    end
+    for _, p in ipairs(LEGACY_GUI_PREFIXES) do
+        if name:sub(1, #p) == p then return true end
+    end
+    return false
+end
+
+-- 先收集待销毁元素，再统一销毁（避免在 pairs(children) 遍历中 destroy 导致漏删）
+local function destroy_legacy_in(location)
+    if not (location and location.valid) then return end
+    local to_kill = {}
+    for _, child in pairs(location.children) do
+        if child and child.valid and (tonumber(child.name) or is_legacy_name(child.name)) then
+            to_kill[#to_kill + 1] = child
+        end
+    end
+    for _, child in ipairs(to_kill) do
+        if child.valid then child.destroy() end
+    end
+end
 
 local function cleanup_legacy_gui(player)
     local top = player.gui.top
     local left = player.gui.left
     local screen = player.gui.screen
     local center = player.gui.center
-    for _, name in ipairs(LEGACY_GUI_NAMES) do
-        if top[name] then top[name].destroy() end
-        if left[name] then left[name].destroy() end
-        if screen[name] then screen[name].destroy() end
-        if center[name] then center[name].destroy() end
-    end
+    -- 先按精确名/前缀销毁已知旧元素（会递归销毁其子元素）
     for _, location in ipairs({top, screen, left, center}) do
-        for _, child in pairs(location.children) do
-           if tonumber(child.name) then
-                child.destroy()
-            end
+        for _, name in ipairs(LEGACY_GUI_NAMES) do
+            if location[name] then location[name].destroy() end
         end
     end
+    -- 再扫描数字名 / 前缀名（先收集后销毁，确保清理彻底）
+    destroy_legacy_in(top)
+    destroy_legacy_in(screen)
+    destroy_legacy_in(left)
+    destroy_legacy_in(center)
 end
 
 local function create_button(player)
@@ -1845,6 +1871,12 @@ end
 Event.add(defines.events.on_player_joined_game, on_player_joined_game)
 Event.on_nth_tick(CONST.UPDATE_INTERVAL_COOLING, update_cooling_panel)
 Event.on_nth_tick(CONST.UPDATE_INTERVAL_GUI, update_gui_loop)
+
+-- 注册到统一重建入口：场景热更 / 服务器更新时统一清理旧 GUI 并重建按钮
+GuiRebuild.register('amap_gui', function(player)
+    cleanup_legacy_gui(player)
+    create_button(player)
+end)
 
 Public.CONST = CONST
 
